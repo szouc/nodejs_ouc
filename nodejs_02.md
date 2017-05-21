@@ -2,11 +2,11 @@
 
 ## 1.1. Node 规范
 
-![Node 规范]()
+![Node 规范](https://raw.githubusercontent.com/szouc/nodejs_ouc/master/images/CH02/Node_Relations.png)
 
 ## 1.2. Node 的模块实现
 
-![Node 模块机制]()
+![Node 模块机制](https://raw.githubusercontent.com/szouc/nodejs_ouc/master/images/CH02/Node_Module.png)
 
 ## 1.3. 包与 NPM
 
