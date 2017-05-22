@@ -78,7 +78,7 @@ Promises/A 提议对单个异步操作做出如下抽象定义：
 
 从事件发布/订阅的角度出发，可粗略的认为 then() 方法是将回调函数（侦听器）存放起来。那么触发事件的任务是由 Deferred 对象实现。但是 Deferred 对象会保持状态不变，再对 Promise 对象添加回调函数，也会立即得到结果，而事件的特点是，你错过了它，再去监听是得不到结果的。
 
-![]()
+![](https://github.com/szouc/nodejs_ouc/raw/master/images/CH04/promises.png)
 
 ### 1.3.3. 流程控制库
 
