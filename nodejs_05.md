@@ -79,7 +79,7 @@ Node 中的 net 模块是对网络通信的一种异步包装， 它为服务端
 
 ## 1.2. TCP 服务
 
-![]()
+![](https://raw.githubusercontent.com/szouc/nodejs_ouc/master/images/CH05/net_Socket.png)
 
 ### 1.2.1. 创建 TCP 服务器端
 
