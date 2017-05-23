@@ -129,5 +129,45 @@ client.on('error', (err) => {
 });
 ```
 
-## 构建 UDP 服务
+## 1.3. 构建 HTTP 服务
 
+无论是 HTTP 请求报文还是 HTTP 响应报文，报文内容都包含两个部分： 报文头和报文体。
+
+### 1.3.1. http 模块
+
+TCP 服务以 **connection** 为单位进行服务（可以看作是 ```connection``` 事件），HTTP 服务以 **request** 为单位进行服务（同理可以看作是 ```request``` 事件）。http 模块即是将 **connection** 到 **request** 的过程进行了封装。
+
+![]()
+
+以服务器端为例, http 模块将连接所用套接字的读写抽象为 IncomingMessage 和 ServerResponse 对象。 在请求响应过程中， http 模块将网络连接读来的数据，通过调用二进制模块 http_parser 进行解析，在解析完请求报文的报头后，触发 ```request``` 事件，调用业务逻辑，然后再通过对连接的写操作，将响应返回到客户端。
+
+#### 1.3.1.1. HTTP 请求
+
+请求报文将会通过 http_parser 进行解析，并抽象为 IcomingMessage 对象：
+
+- ```mssage.method``` 字符形式的请求方法，只读。
+- ```message.url``` 请求 URL 字符串。
+- ```message.httpVersion``` http 版本号。
+- ```message.headers``` 头部变量和数值所对应的键/值对。
+
+IcomingMessage 对象是一个只读流接口（Readable Stream），如果业务逻辑需要读取报文体中的数据，则要在这个数据流结束后才能进行。
+
+#### 1.3.1.2. HTTP 响应
+
+HTTP 响应封装了对底层连接的写操作，可以将其看成一个可写的流对象（Writable Stream）。http 模块将 HTTP 响应抽象为 ServerResponse 对象。
+ServerResponse 对象对报文头的操作：
+
+- ```response.setHeader(name, value)``` 设置响应报文头，可以多次设置。
+- ```response.writeHeader(statusCode[,statusMessage][,headers])``` 发送响应报文头。
+
+ServerResponse 对象对报文体的操作：
+
+- ```response.write(chunk,[,encoding][,callback])``` 发送响应报文体的区块，注意一旦开始了数据发送，报文头的发送将不再生效。
+- ```response.end([data][,encoding][,callback])``` 每一个响应**必须**调用该方法，调用该方法意味着所有响应报文都已发送，服务器认为这次事务结束。
+
+#### HTTP 服务的事件
+
+对于 Node 来说，可以将 HTTP 服务抽象为 ```http.Server``` 对象，该对象继承自 ```net.Server``` 对象，所以 HTTP 服务的实例是一个 ```EventEmitter``` ，与其相关的事件有：
+
+- ```connection``` 当一个新的 TCP 数据流被建立，该事件触发并返回一个 ```net.Socket``` 实例。
+- ```request``` 建立 TCP 连接后，当请求数据到达服务器端， http 模块底层解析出 HTTP 请求报文头后，将会触发该事件。
