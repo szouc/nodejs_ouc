@@ -35,3 +35,17 @@ http.createServer(app).listen(1337);
 HTTP_Parser 在解析请求报文时，将报文头抽取出来并将请求方式抽象为 ```req.method``` 属性。
 
 ### 1.1.2. 路径解析
+
+url 模块提供了 URL 的解析。URL 是由多个具有意义的字段组成的字符串，具体描述如下：
+
+![]()
+
+HTTP_Parser 将请求报文头的路径字段解析成名为 ```req.url``` 的 URL 字符串, 它可通过 ```url.parse()``` 方法解析成 URL 对象，对象中的 ```urlObject.pathname``` 属性反映了 URL 字符串的 *path* 字段中的 *pathname* 部分。
+
+### 1.1.3. 查询字符串
+
+在 *pathname* 部分后就是查询字符串，这部分内容经常需要为业务逻辑所用， Node 提供了 qureystring 模块来处理这部分数据。注意，业务的判断一定要检查值是数组还是字符串。
+
+### 1.1.4. Cookie
+
+
