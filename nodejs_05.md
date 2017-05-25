@@ -137,7 +137,7 @@ client.on('error', (err) => {
 
 TCP 服务以 **connection** 为单位进行服务（可以看作是 ```'connection'``` 事件），HTTP 服务以 **request** 为单位进行服务（同理可以看作是 ```'request'``` 事件）。http 模块即是将 **connection** 到 **request** 的过程进行了封装。
 
-![]()
+![](https://raw.githubusercontent.com/szouc/nodejs_ouc/master/images/CH05/connection_request.png)
 
 以服务器端为例, http 模块将连接所用套接字的读写抽象为 IncomingMessage 和 ServerResponse 对象。 在请求响应过程中， http 模块将网络连接读来的数据，通过调用二进制模块 http_parser 进行解析，在解析完请求报文的报头后，触发 ```'request'``` 事件，调用业务逻辑，然后再通过对连接的写操作，将响应返回到客户端。
 
