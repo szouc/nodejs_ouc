@@ -1,4 +1,4 @@
-# 1. 构建 Web 应用
+# 1. 构建 Web 应用（服务器端）
 
 ## 1.1. 基础功能
 
@@ -30,22 +30,90 @@ const app = express();
 http.createServer(app).listen(1337);
 ```
 
-### 1.1.1. 请求方法
+### 1.1.1. HTTP Parser
+
+Node 底层使用 HTTP_Parser 这个 C 语言模块来解析 HTTP 协议数据， 它解析的主要信息有：
+
+- 头部字段和对应值（Header）
+- Content-Length
+- 请求方法（Method）
+- 响应状态码（Status Code）
+- 传输编码
+- HTTP 版本
+- 请求 URL
+- 报文主体
+
+### 1.1.2. 请求方法
 
 HTTP_Parser 在解析请求报文时，将报文头抽取出来并将请求方式抽象为 ```req.method``` 属性。
 
-### 1.1.2. 路径解析
+### 1.1.3. 路径解析
 
 url 模块提供了 URL 的解析。URL 是由多个具有意义的字段组成的字符串，具体描述如下：
 
-![]()
+![](https://raw.githubusercontent.com/szouc/nodejs_ouc/master/images/CH06/url_parser.png)
 
 HTTP_Parser 将请求报文头的路径字段解析成名为 ```req.url``` 的 URL 字符串, 它可通过 ```url.parse()``` 方法解析成 URL 对象，对象中的 ```urlObject.pathname``` 属性反映了 URL 字符串的 *path* 字段中的 *pathname* 部分。
 
-### 1.1.3. 查询字符串
+### 1.1.4. 查询字符串
 
 在 *pathname* 部分后就是查询字符串，这部分内容经常需要为业务逻辑所用， Node 提供了 qureystring 模块来处理这部分数据。注意，业务的判断一定要检查值是数组还是字符串。
 
-### 1.1.4. Cookie
+### 1.1.5. Cookie
 
+HTTP 是一个无状态协议，无法区分用户之间的身份。如何标识和认证一个用户，最早的方案就是 Cookie 。
+
+Cookie 的处理分为如下几步：
+
+- 服务器向客户端发送 Cookie
+- 浏览器将 Cookie 保存
+- 之后每次浏览器都会将 Cookie 发送给服务器端
+
+#### 1.1.5.1. 服务器端解析 Cookie
+
+HTTP_Parser 会将请求报文头的所有字段解析到 ```req.headers``` 上，Cookie 就是 ```req.headers.cookie``` 。 Cookie 值的格式是键值对，Express 的中间件 ```cookie-parser``` 将其挂载在 req 对象上，让业务代码可以直接访问。
+
+```js
+function cookieParser (options) {
+  return function cookieParser (req, res, next) {
+    if (req.cookies) {
+      return next()
+    }
+    var cookies = req.headers.cookie
+    req.cookies = Object.create(null)
+    // no cookies
+    if (!cookies) {
+      return next()
+    }
+    req.cookies = cookie.parse(cookies, options) // 这里调用了 cookie 模块 (https://github.com/jshttp/cookie)
+    next()
+  }
+}
+```
+
+#### 1.1.5.2. 客户端初始 Cookie
+
+客户端的 Cookie 最初来自服务器端，服务器端告知客户端的方式是通过响应报文实现的，响应的 Cookie 值在 *Set-Cookie* 字段中设置。具体格式如下所示：
+
+```js
+Set-Cookie: name=value; Path=/; Expires=Sun, 23-Apr-23 09:01:35 GMT; Domain=.domain.com;
+```
+
+- ```path``` 标识这个 Cookie 影响到的路径。
+- ```Expires``` 和 ```Max-Age``` 告知浏览器这个 Cookie 何时过期。
+- ```Secure``` 该属性为 true 时，表示 Cookie 只能通过 HTTPS 协议传递。
+
+Express 中间件 ```express-session``` 处理 *Set-Cookie* :
+
+```js
+function setcookie(res, name, val, secret, options) {
+  var signed = 's:' + signature.sign(val, secret);
+  var data = cookie.serialize(name, signed, options);
+  var prev = res.getHeader('set-cookie') || [];
+  var header = Array.isArray(prev) ? prev.concat(data) : [prev, data];
+  res.setHeader('set-cookie', header)
+}
+```
+
+### 1.1.6. Session
 
