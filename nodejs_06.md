@@ -117,3 +117,59 @@ function setcookie(res, name, val, secret, options) {
 
 ### 1.1.6. Session
 
+### Basic 认证
+
+Basic 认证是一个通过用户名和密码实现的身份认证方式。如果用户首次访问网页， URL 地址中没有携带认证内容，那么浏览器会到得一个 401 未授权的响应。
+
+```js
+var http = require('http')
+var auth = require('basic-auth')
+
+// Create server
+var server = http.createServer(function (req, res) {
+  var credentials = auth(req)
+
+  if (!credentials || credentials.name !== 'john' || credentials.pass !== 'secret') {
+    res.statusCode = 401
+    res.setHeader('WWW-Authenticate', 'Basic realm="example"')
+    res.end('Access denied')
+  } else {
+    res.end('Access granted')
+  }
+})
+
+// Listen
+server.listen(3000)
+```
+
+> 响应头中的 ```WWW-Authenticate``` 字段告知浏览器采用什么样的认证和加密方式。
+
+浏览器在后续请求中都携带上 Authorization 信息，服务器会检查请求报文头中的 Authorization 字段的内容，该字段有认证方式和加密值构成。
+
+```js
+function auth (req) {
+  // get header
+  var header = req.headers.authorization
+  // parse header
+  var match = CREDENTIALS_REGEXP.exec(string) // CREDENTIALS_REGEXP = /^ *(?:[Bb][Aa][Ss][Ii][Cc]) +([A-Za-z0-9._~+/-]+=*) *$/
+  if (!match) {
+    return undefined
+  }
+  // decode user pass
+  var userPass = USER_PASS_REGEXP.exec(decodeBase64(match[1]))  // USER_PASS_REGEXP = /^([^:]*):(.*)$/
+  if (!userPass) {
+    return undefined
+  }
+  // return credentials object
+  return new Credentials(userPass[1], userPass[2])
+}
+
+function decodeBase64 (str) {
+  return new Buffer(str, 'base64').toString()
+}
+
+function Credentials (name, pass) {
+  this.name = name
+  this.pass = pass
+}
+```

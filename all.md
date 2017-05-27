@@ -203,6 +203,48 @@ Promises/A 提议对单个异步操作做出如下抽象定义：
 
 ![](https://github.com/szouc/nodejs_ouc/raw/master/images/CH04/promises.png)
 
+#### 4.3.2.2. 事件发布/订阅模式和 Promises/Deferred 模式的区别
+
+```js
+// Promises 和 事件发布/订阅的区别
+
+const EventsEmitter = require('events');
+
+const emitter = new EventsEmitter();
+
+const promise = new Promise(function(resolve, reject) {
+  console.log("promise");
+  resolve();
+});
+
+emitter.emit("done", "emit_ignore") // 触发事件，但是没有事件被订阅
+
+emitter.on("done", (data) => {
+  console.log(data + " done");
+  promise.then(function() {     // 进入微指令队列（mirco），延迟执行。
+    console.log("then in done");
+  });
+});
+
+emitter.emit("done", "emit")    // 触发事件，事件被订阅，事件侦听器立即执行（同步）
+
+console.log("This is script.")
+
+promise.then(function() {       // 进入微指令队列（mirco），延迟执行。
+  console.log("then");
+});
+```
+
+上面程序的结果如下：
+
+```bash
+promise
+emit done
+This is script.
+then in done
+then
+```
+
 ### 4.3.3. 流程控制库
 
 - 尾触发与 Next
