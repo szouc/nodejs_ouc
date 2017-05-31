@@ -22,7 +22,14 @@
     - [1.3.2. MVC](#132-mvc)
     - [1.3.3. RESTful](#133-restful)
   - [1.4. 中间件](#14-中间件)
-    - [1.4.1. 异常处理](#141-异常处理)
+    - [1.4.1. 普通中间件](#141-普通中间件)
+    - [1.4.2. 异常处理](#142-异常处理)
+  - [1.5. 页面渲染](#15-页面渲染)
+    - [1.5.1. 内容响应](#151-内容响应)
+      - [1.5.1.1. MIME](#1511-mime)
+      - [1.5.1.2. 附件下载](#1512-附件下载)
+      - [1.5.1.3. 响应 JSON](#1513-响应-json)
+      - [1.5.1.4. 响应跳转](#1514-响应跳转)
 
 <!-- /TOC -->
 
@@ -259,8 +266,6 @@ IncomingForm.prototype.parse = function(req, cb) {
 }
 ```
 
-
-
 ### 1.2.2. 附件上传
 
 一种特殊的表单需要提交文件，该表单中可以含有 file 类型的控件，以及需要指定表单属性 *enctype* 为 ```multipart/form-data``` 。因为表单中含有多种控件，所有使用名为 ```boundary``` 的分隔符进行分割。
@@ -395,9 +400,11 @@ Node 的 ```http``` 模块提供了应用层协议的封装，但是对具体业
 
 ![Middleware](https://raw.githubusercontent.com/szouc/nodejs_ouc/master/images/CH06/middleware.png)
 
+### 1.4.1. 普通中间件
+
 在 Express 中，中间件按惯例会接受三个参数：一个请求对象，一个响应对象，还有一个通常命名为 ```next``` 的参数，它是一个回调函数，表明该组件已经完成了工作，可以执行下一个中间件组件了。中间件的分派主要依赖于 ```next``` 这个回调函数的尾触发，这样前一个中间件组件完成后才能进入下一个中间件组件。
 
-通过中间件和业务逻辑的结合可以完成对路由的执行。首先使用 ```app.use()``` 等方法将所有的中间件和业务逻辑以及相应的挂载点有序的放入路由数组，然后通过请求路径与挂载点的对比，将匹配的数据元素重组为新的数组，最后通过分发执行中间件，中间件执行完毕后通过 ```next()``` 函数将结果转入到下一个匹配的数组元素。
+在 Web 应用中，路由是个至关重要的概念，它会把请求 URL 映射到实现业务逻辑的函数上。通过中间件和业务逻辑的结合可以完成对路由的执行。首先使用 ```app.use()``` 等方法将所有的中间件和业务逻辑以及相应的挂载点有序的放入路由数组，然后通过请求路径与挂载点的对比，将匹配的数据元素重组为新的数组，最后通过分发执行中间件，中间件执行完毕后通过 ```next()``` 函数将结果转入到下一个匹配的数组元素。
 
 ```js
 var handle = function (req, res, stack) {
@@ -415,9 +422,104 @@ var handle = function (req, res, stack) {
 };
 ```
 
-![dispatch]()
+![dispatch](https://raw.githubusercontent.com/szouc/nodejs_ouc/master/images/CH06/middle_dispatch.png)
 
-### 1.4.1. 异常处理
+### 1.4.2. 异常处理
 
-为了捕获中间件抛出的同步异常，保证 Web 应用的稳定和健壮，我们为 ```next()``` 方法添加 ```err``` 参数。
+为了捕获中间件抛出的同步异常，保证 Web 应用的稳定和健壮，我们为 ```next()``` 方法添加 ```err``` 参数。这主要是因为异步的异常不能直接捕获，中间件的异常需要自己传递出来。
 
+使用中间件的思路将异常的处理交给中间件，同时为了区分异常处理中间件和普通中间件的区别，在其参数中加入 ```err``` 参数：
+
+```js
+const middleware = function(options) {
+  return function(err, req, res, next) {
+    // TODO
+    next();
+  };
+};
+```
+
+每个异常处理中间件可通过 ```next(err)``` 方法将异常传递给下一个异常处理中间件，其思路与普通中间件完全一致。
+
+> 如果异常处理中间件没有设置 ```next(err)``` 方法，那它后面的异常处理中间件都不会起作用。
+
+## 1.5. 页面渲染
+
+执行完中间件及业务逻辑后，服务器端该如何响应客户端？一般有两种方式：
+
+- 内容响应
+- 视图渲染
+
+### 1.5.1. 内容响应
+
+因为服务器端响应的报文，最终都会被客户端处理，具体终端有可能是命令行，也有可能是浏览器。这就使得响应报文头中的 ```content-*``` 字段显得十分重要。
+
+#### 1.5.1.1. MIME
+
+报文头中的 ```Content-Type``` 字段的值决定采用不同的渲染方式，而这个值就是 MIME值。不同的文件类型具有不同的 MIME 值:
+
+- JSON 文件： ```application/json```
+- XML 文件： ```application/xml```
+- PDF 文件： ```application/pdf```
+
+#### 1.5.1.2. 附件下载
+
+报文头中的 ```Content-Disposition``` 字段影响的行为是客户端会根据它的值判断是应该将报文数据当做及时浏览的内容（inline），还是可以下载的附件（attachment）。
+
+#### 1.5.1.3. 响应 JSON
+
+为了快捷的响应 JSON 数据， Express 封装了响应对象的 ```res.json()``` 方法：
+
+```js
+res.json = function json(obj) {
+  var val = obj;
+  var body = JSON.stringify(val);
+
+  // content-type
+  if (!this.get('Content-Type')) {
+    this.set('Content-Type', 'application/json');
+  }
+  return this.send(body);
+};
+```
+
+#### 1.5.1.4. 响应跳转
+
+当前 URL 因为某些原因不能处理， 需要将用户跳转到别的 URL 时，Express 同样封装了一个快捷方式 ```res.redirect()```:
+
+```js
+res.redirect = function redirect(url) {
+  var address = url;
+  var body;
+  var status = 302;
+
+  // Set location header
+  address = this.location(address).get('Location');
+
+  // Support text/{plain,html} by default
+  this.format({
+    text: function(){
+      body = statuses[status] + '. Redirecting to ' + address
+    },
+
+    html: function(){
+      var u = escapeHtml(address);
+      body = '<p>' + statuses[status] + '. Redirecting to <a href="' + u + '">' + u + '</a></p>'
+    },
+
+    default: function(){
+      body = '';
+    }
+  });
+
+  // Respond
+  this.statusCode = status;
+  this.set('Content-Length', Buffer.byteLength(body));
+
+  if (this.req.method === 'HEAD') {
+    this.end();
+  } else {
+    this.end(body);
+  }
+};
+```
