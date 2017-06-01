@@ -30,7 +30,6 @@
       - [1.5.1.2. 附件下载](#1512-附件下载)
       - [1.5.1.3. 响应 JSON](#1513-响应-json)
       - [1.5.1.4. 响应跳转](#1514-响应跳转)
-    - [1.5.2. 视图渲染 （感觉会淘汰，略）](#152-视图渲染-感觉会淘汰略)
 
 <!-- /TOC -->
 
@@ -150,6 +149,16 @@ function setcookie(res, name, val, secret, options) {
 ```
 
 ### 1.1.6. Session
+
+Cookie 的缺点是无法保护敏感数据，因此 Session 应运而生。 Session 的数据只保留在服务器端，客户端是无法更改的。服务器端是如何将每个用户和 Session 数据对应起来的？通常是基于 Cookie 来实现映射关系的，具体步骤如下：
+
+- 服务器端生成 Session 和 sessionID（口令）
+- 将 Session 数据 和 sessionID 映射存储在 Store 中（redis、mongodb、memory）
+- 通过 *Set-Cookie* 将 sessionID 作为 Cookie 的键值对发送给客户端。
+- 对于客户端的请求，服务器端每次检查 Cookie 中的 sessionID，并对应保留在服务器端 Store 的 Session 数据。
+- [ 服务器端更新存储 Session 数据 ]
+
+Express 的中间件 ```express-session``` 将 Session 数据挂载在 ```req.session```，方便业务逻辑使用。同时 ```express-session``` 还提供了多种 Store 。
 
 ### 1.1.7. Basic 认证
 
@@ -524,5 +533,3 @@ res.redirect = function redirect(url) {
   }
 };
 ```
-
-### 1.5.2. 视图渲染 （感觉会淘汰，略）
