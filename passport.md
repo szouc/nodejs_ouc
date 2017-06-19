@@ -1,12 +1,12 @@
-# 1. Passport
+# 1. 综述 GENERAL
 
 **Simple, unobtrusive authentication for Node.js**
 
 <!-- TOC -->
 
-- [1. Passport](#1-passport)
+- [1. 综述 GENERAL](#1-综述-general)
   - [1.1. 概览 Overview](#11-概览-overview)
-  - [1.2. 认证](#12-认证)
+  - [1.2. 认证 Authenticate](#12-认证-authenticate)
     - [1.2.1. 重定向 Redirects](#121-重定向-redirects)
     - [1.2.2. 快报 Flash Messages](#122-快报-flash-messages)
     - [1.2.3. 禁用会话 Disable Sessions](#123-禁用会话-disable-sessions)
@@ -16,6 +16,17 @@
     - [1.3.2. 验证回调 Verify Callback](#132-验证回调-verify-callback)
     - [1.3.3. 中间件 Middleware](#133-中间件-middleware)
     - [1.3.4. 会话 Session](#134-会话-session)
+  - [1.4. 用户名和密码 Username & Password](#14-用户名和密码-username--password)
+    - [1.4.1. 配置 Configuration](#141-配置-configuration)
+    - [1.4.2. 表格 Form](#142-表格-form)
+    - [1.4.3. 路由 Route](#143-路由-route)
+    - [1.4.4. 参数 Parameters](#144-参数-parameters)
+  - [1.5. OpenID](#15-openid)
+  - [1.6. OAuth](#16-oauth)
+- [2. 内置操作 Operations](#2-内置操作-operations)
+  - [2.1. 登录 Log In](#21-登录-log-in)
+  - [2.2. 注销 Log Out](#22-注销-log-out)
+  - [2.3. 授权 Authorize](#23-授权-authorize)
 
 <!-- /TOC -->
 
@@ -40,7 +51,7 @@ app.post('/login', passport.authenticate('local', { successRedirect: '/',
 $ npm install passport
 ```
 
-## 1.2. 认证
+## 1.2. 认证 Authenticate
 
 通过调用 ```passport.authenticate()``` 方法及配置相应的策略，就可实现认证网络请求。 ```authenticate()``` 方法是标准的Node 中间件，在 Express 应用中可以非常方便的作为路由使用。
 
@@ -195,7 +206,7 @@ return done(err);
 
 > **注意：** 区分开两种验证失败的原因，如果是服务器的异常 ```done``` 函数的第一个参数 ```err``` 设置为非空值；验证条件的失败要确保 ```err``` 为 null 。
 
-这种委派方式，确保了 Passport 数据库对验证回调函数的透明，应用可任意选择用户信息的存储方式，使得在认证层面没有多余的条件来影响验证。
+这种委派方式确保了 Passport 数据库对验证回调函数的透明，应用可任意选择用户信息的存储方式。
 
 ### 1.3.3. 中间件 Middleware
 
@@ -214,8 +225,7 @@ app.use(passport.session());
 
 ### 1.3.4. 会话 Session
 
-在典型的网络应用中，登录请求中包含验证用户的认证信息。如果认证成功，用户浏览器中通过 cookie 创建并保存 sessionID。随后所有的请求不再需要验证，而是通过 sessionID 来
-识别用户。Passport 可以将 session 中的用户信息序列化或反序列化，以此支持 session 机制。
+在典型的网络应用中，登录请求中包含验证用户的认证信息。如果认证成功，用户浏览器中通过 cookie 创建并保存 sessionID。随后所有的请求不再需要验证，而是通过 sessionID 来识别用户。Passport 可以将 session 中的用户信息序列化或反序列化，以此支持 session 机制。
 
 ```js
 passport.serializeUser(function(user, done) {
@@ -230,3 +240,126 @@ passport.deserializeUser(function(id, done) {
 ```
 
 上述代码中，user ID 被序列化到 session 中，接下来的请求中，通过 user ID 获取用户信息并将其存入到 ```req.user``` 中。
+
+序列化和反序列化的逻辑由应用提供，可以选择适合的数据库存储会话，在认证层面这些操作没有任何的限制。
+
+## 1.4. 用户名和密码 Username & Password
+
+网络中最常用的方式就是通过用户名和密码进行认证，提供这种认证的策略是 ```passport-local``` 。
+
+```js
+$ npm install passport-local
+```
+
+### 1.4.1. 配置 Configuration
+
+```js
+var passport = require('passport')
+  , LocalStrategy = require('passport-local').Strategy;
+
+passport.use(new LocalStrategy(
+  function(username, password, done) {
+    User.findOne({ username: username }, function(err, user) {
+      if (err) { return done(err); }
+      if (!user) {
+        return done(null, false, { message: 'Incorrect username.' });
+      }
+      if (!user.validPassword(password)) {
+        return done(null, false, { message: 'Incorrect password.' });
+      }
+      return done(null, user);
+    });
+  }
+));
+```
+
+本地认证的验证回调函数接受 ```username``` 和 ```password``` 两个参数。
+
+### 1.4.2. 表格 Form
+
+表格提供了 ```username``` 和 ```password``` 这两个参数：
+
+```html
+<form action="/login" method="post">
+    <div>
+        <label>Username:</label>
+        <input type="text" name="username"/>
+    </div>
+    <div>
+        <label>Password:</label>
+        <input type="password" name="password"/>
+    </div>
+    <div>
+        <input type="submit" value="Log In"/>
+    </div>
+</form>
+```
+
+### 1.4.3. 路由 Route
+
+登录表格信息通过 ```POST``` 方法提交给服务器， ```local``` 策略使用 ```authenticate()``` 函数处理登录请求：
+
+```js
+app.post('/login',
+  passport.authenticate('local', { successRedirect: '/',
+                                   failureRedirect: '/login',
+                                   failureFlash: true })
+);
+```
+
+设置 ```failureFlash``` 选项为 ```true``` ，意味着在验证回调函数中返回的 ```message``` 信息将成为错误快报的值。
+
+### 1.4.4. 参数 Parameters
+
+默认情况下，```localStrategy``` 策略使用 ```username``` 和 ```password``` 作为认证机制的参数，实际上其他字段也可以作为参数进行验证：
+
+```js
+passport.use(new LocalStrategy({
+    usernameField: 'email',
+    passwordField: 'passwd'
+  },
+  function(username, password, done) {
+    // ...
+  }
+));
+```
+
+## 1.5. OpenID
+
+暂时用不到 ^_^
+
+## 1.6. OAuth
+
+暂时用不到 ^_^
+
+# 2. 内置操作 Operations
+
+## 2.1. 登录 Log In
+
+Passport 通过暴露给 ```req``` 的 ```login()``` 方法建立登录会话。
+
+```js
+req.login(user, function(err) {
+  if (err) { return next(err); }
+  return res.redirect('/users/' + req.user.username);
+});
+```
+
+登录操作完成后，用户信息被指派在 ```req.user``` 上。
+
+> **注意：** ```passport.authenticate()``` 中间件会自动触发 ```req.login()``` 。 这项功能主要使用在用户注册时，调用 ```req.login()``` 方法自动登录新注册的用户。
+
+## 2.2. 注销 Log Out
+
+与 ```login()``` 相反，```logout()``` 方法用来结束登录会话。 调用 ```logout()``` 方法会删除 ```req.user``` 属性并清除登录会话。
+
+```js
+app.get('/logout', function(req, res){
+  req.logout();
+  res.redirect('/');
+});
+```
+
+## 2.3. 授权 Authorize
+
+暂时用不到 ^_^
